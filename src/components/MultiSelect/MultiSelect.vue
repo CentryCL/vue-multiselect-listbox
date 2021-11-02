@@ -1,6 +1,7 @@
 <template>
   <div class="msl-multi-select">
     <SearchableList
+      ref="availableList"
       :list-items="availableOptions"
       :no-options-text="noOptionsText"
       :no-items-found-text="noOptionsFoundText"
@@ -34,6 +35,7 @@
     </div>
 
     <SearchableList
+      ref="selectedList"
       :list-items="selectedItems"
       :no-options-text="selectedNoOptionsText"
       :no-items-found-text="noSelectedOptionsFoundText"
@@ -239,17 +241,30 @@ export default {
       this.$emit('change', items);
     },
     onSelectAllOptions() {
-      this.selectedItems = [...this.options];
+      if (this.$refs.availableList.searchText === '') {
+        this.selectedItems = [...this.options];
+      } else {
+        const availableItems = this.$refs.availableList.filteredListItems;
+        this.selectedItems = this.selectedItems.concat(availableItems);
+      }
 
-      const selectedValues = getValuesFromOptions(this.reduceValueProperty, this.options);
+      const selectedValues = getValuesFromOptions(this.reduceValueProperty, this.selectedItems);
       this.$emit('input', selectedValues);
       this.$emit('change', selectedValues);
     },
     onUnselectAllOptions() {
-      this.selectedItems = [];
+      if (this.$refs.selectedList.searchText === '') {
+        this.selectedItems = [];
+      } else {
+        const filteredItems = this.$refs.selectedList.filteredListItems;
+        this.selectedItems = this.selectedItems.filter((item) => {
+          return filteredItems.indexOf(item) < 0;
+        });
+      }
 
-      this.$emit('input', []);
-      this.$emit('change', []);
+      const selectedValues = getValuesFromOptions(this.reduceValueProperty, this.selectedItems);
+      this.$emit('input', selectedValues);
+      this.$emit('change', selectedValues);
     },
   },
 };

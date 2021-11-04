@@ -17,7 +17,7 @@
     <div class="msl-multi-select__actions">
       <a
         class="msl-multi-select__action msl-multi-select__action-select-all"
-        :class="{'invisible': !showSelectAllButtons}"
+        :class="{ invisible: !showSelectAllButtons }"
         @click="onSelectAllOptions"
       >
         <font-awesome-icon icon="angle-double-right" />
@@ -27,7 +27,7 @@
 
       <a
         class="msl-multi-select__action msl-multi-select__action-unselect-all"
-        :class="{'invisible': !showSelectAllButtons}"
+        :class="{ invisible: !showSelectAllButtons }"
         @click="onUnselectAllOptions"
       >
         <font-awesome-icon icon="angle-double-left" />
@@ -52,7 +52,11 @@
 <script>
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faExchangeAlt, faAngleDoubleRight, faAngleDoubleLeft } from '@fortawesome/free-solid-svg-icons';
+import {
+  faExchangeAlt,
+  faAngleDoubleRight,
+  faAngleDoubleLeft,
+} from '@fortawesome/free-solid-svg-icons';
 
 import SearchableList from '../SearchableList/SearchableList.vue';
 
@@ -66,13 +70,16 @@ function getSelectedItemsFromValue(values, valueProperty, availableOptions) {
       const item = availableOptions.find(function findOptions(option) {
         if (typeof valueProperty === 'string') {
           return option[valueProperty] === value;
-        } else if (typeof valueProperty === 'function') { // eslint-disable-line
+        } if (typeof valueProperty === 'function') {
+          // eslint-disable-line
           return valueProperty(option) === value;
         }
 
         return option;
       });
-      selectedItems.push(item);
+      if (item) {
+        selectedItems.push(item);
+      }
     });
 
     return selectedItems;
@@ -84,7 +91,8 @@ function getSelectedItemsFromValue(values, valueProperty, availableOptions) {
 function getValueFromOption(valueProperty, option) {
   if (typeof valueProperty === 'string') {
     return option[valueProperty];
-  } else if (typeof valueProperty === 'function') { // eslint-disable-line
+  } if (typeof valueProperty === 'function') {
+    // eslint-disable-line
     return valueProperty(option);
   }
 
@@ -193,7 +201,9 @@ export default {
   watch: {
     value(newValue) {
       this.selectedItems = getSelectedItemsFromValue(
-        newValue, this.reduceValueProperty, this.options,
+        newValue,
+        this.reduceValueProperty,
+        this.options,
       );
     },
   },
@@ -211,9 +221,12 @@ export default {
 
       let valueIndex = items.findIndex((item) => {
         if (this.reduceValueProperty) {
-          return item && option
-          && (getValueFromOption(this.reduceValueProperty, item)
-              === getValueFromOption(this.reduceValueProperty, option));
+          return (
+            item
+            && option
+            && getValueFromOption(this.reduceValueProperty, item)
+              === getValueFromOption(this.reduceValueProperty, option)
+          );
         }
 
         return item === option;
@@ -223,9 +236,12 @@ export default {
 
       valueIndex = selectedItems.findIndex((item) => {
         if (this.reduceValueProperty) {
-          return item && option
-          && getValueFromOption(this.reduceValueProperty, item)
-          === getValueFromOption(this.reduceValueProperty, option);
+          return (
+            item
+            && option
+            && getValueFromOption(this.reduceValueProperty, item)
+              === getValueFromOption(this.reduceValueProperty, option)
+          );
         }
 
         return item === option;
@@ -257,9 +273,7 @@ export default {
         this.selectedItems = [];
       } else {
         const filteredItems = this.$refs.selectedList.filteredListItems;
-        this.selectedItems = this.selectedItems.filter((item) => {
-          return filteredItems.indexOf(item) < 0;
-        });
+        this.selectedItems = this.selectedItems.filter((item) => filteredItems.indexOf(item) < 0);
       }
 
       const selectedValues = getValuesFromOptions(this.reduceValueProperty, this.selectedItems);
@@ -268,7 +282,6 @@ export default {
     },
   },
 };
-
 </script>
 
 <style lang="scss">

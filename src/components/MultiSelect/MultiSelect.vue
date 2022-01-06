@@ -221,12 +221,9 @@ export default {
 
       let valueIndex = items.findIndex((item) => {
         if (this.reduceValueProperty) {
-          return (
-            item
-            && option
-            && getValueFromOption(this.reduceValueProperty, item)
-              === getValueFromOption(this.reduceValueProperty, option)
-          );
+          return item && option
+          && (item
+              === getValueFromOption(this.reduceValueProperty, option));
         }
 
         return item === option;

@@ -299,41 +299,42 @@ export default {
     },
 
     onSelectAllOptions() {
-      if (this.$refs.availableList.searchText === '') {
+      const availableItems = this.$refs.availableList.filteredListItems;
+      if (this.$refs.availableList.searchText === "") {
         this.selectedItems = [...this.options];
       } else {
-        const availableItems = this.$refs.availableList.filteredListItems;
         this.selectedItems = this.selectedItems.concat(availableItems);
       }
 
-      const selectedValues = getValuesFromOptions(this.reduceValueProperty, this.selectedItems);
-      this.$emit('input', selectedValues);
-      this.$emit('change', selectedValues);
-
-      this.addToNewlyAddedItems(this.selectedItems);
-      this.addToNewlyRemovedItems([], true);
-
+      this.addToNewlyAddedItems(availableItems);
+      this.removeFromNewlyRemovedItems(availableItems);
+      const selectedValues = getValuesFromOptions(
+        this.reduceValueProperty,
+        this.selectedItems
+      );
+      this.$emit("input", selectedValues);
+      this.$emit("change", selectedValues);
       this.emitChangedItems();
     },
 
     onUnselectAllOptions() {
-      this.addToNewlyRemovedItems(this.selectedItems);
-      this.addToNewlyAddedItems([], true);
-
-      this.selectedItems = [];
-      this.emitChangedItems();
-      this.$emit('input', []);
-      this.$emit('change', []);
-      if (this.$refs.selectedList.searchText === '') {
+      const filteredItems = this.$refs.selectedList.filteredListItems;
+      if (this.$refs.selectedList.searchText === "") {
         this.selectedItems = [];
       } else {
-        const filteredItems = this.$refs.selectedList.filteredListItems;
-        this.selectedItems = this.selectedItems.filter((item) => filteredItems.indexOf(item) < 0);
+        this.selectedItems = this.selectedItems.filter(
+          item => filteredItems.indexOf(item) < 0
+        );
       }
-
-      const selectedValues = getValuesFromOptions(this.reduceValueProperty, this.selectedItems);
-      this.$emit('input', selectedValues);
-      this.$emit('change', selectedValues);
+      this.addToNewlyRemovedItems(filteredItems);
+      this.removeFromNewlyAddedItems(filteredItems);
+      const selectedValues = getValuesFromOptions(
+        this.reduceValueProperty,
+        this.selectedItems
+      );
+      this.$emit("input", selectedValues);
+      this.$emit("change", selectedValues);
+      this.emitChangedItems();
     },
 
     addToNewlyAddedItems(options, reset = false) {

@@ -10,7 +10,10 @@
       :value-property="reduceValueProperty"
       :placeholder-text="searchOptionsPlaceholder"
       :search-input-class="searchInputClass"
+      :highlight-class="highlightRemovedClass"
+      :highlight-items="newlyRemovedItems"
       class="msl-multi-select__list"
+      :highlight-diff="highlightDiff"
       @onClickOption="onOptionSelect"
     />
 
@@ -43,6 +46,9 @@
       :value-property="reduceValueProperty"
       :placeholder-text="selectedOptionsPlaceholder"
       :search-input-class="searchInputClass"
+      :highlight-class="highlightAddedClass"
+      :highlight-items="newlyAddedItems"
+      :highlight-diff="highlightDiff"
       class="msl-multi-select__selected msl-multi-select__list"
       @onClickOption="onOptionRemove"
     />
@@ -107,6 +113,17 @@ function getValuesFromOptions(valueProperty, options) {
   });
 
   return values;
+}
+
+function getIndexFromVModelForOption(items, option, reduceValueProperty) {
+  return items.findIndex((item) => {
+    if (reduceValueProperty) {
+      return item && option
+          && (item === getValueFromOption(reduceValueProperty, option));
+    }
+
+    return item === option;
+  });
 }
 
 export default {
@@ -175,10 +192,30 @@ export default {
       type: String,
       default: '',
     },
+    highlightDiff: {
+      type: Boolean,
+      default: false,
+    },
+    highlightRemovedClass: {
+      type: String,
+      default: 'msl-searchable-list__item--removed',
+    },
+    highlightAddedClass: {
+      type: String,
+      default: 'msl-searchable-list__item--added',
+    },
   },
+
   data() {
     return {
       selectedItems: getSelectedItemsFromValue(this.value, this.reduceValueProperty, this.options),
+      originalValueCopy: [],
+
+      // This is for tracking items which have just been removed
+      newlyRemovedItems: [],
+
+      // This is for tracking items which have just been added
+      newlyAddedItems: [],
     };
   },
 
@@ -199,60 +236,68 @@ export default {
   },
 
   watch: {
-    value(newValue) {
-      this.selectedItems = getSelectedItemsFromValue(
-        newValue,
-        this.reduceValueProperty,
-        this.options,
-      );
+    value: {
+      immediate: true,
+      handler(newValue, oldValue) {
+        if (newValue?.length && !oldValue && this.highlightDiff) {
+          this.originalValueCopy = [...newValue];
+        }
+
+        this.selectedItems = getSelectedItemsFromValue(
+          newValue, this.reduceValueProperty, this.options,
+        );
+      },
     },
   },
 
   methods: {
     onOptionSelect(option) {
       this.selectedItems.push(option);
+
       const items = [...this.value, getValueFromOption(this.reduceValueProperty, option)];
+
+      // Only if this option is enabled
+      this.addToNewlyAddedItems([option]);
+      this.removeFromNewlyRemovedItems([option]);
+
+      this.emitChangedItems();
+
       this.$emit('input', items);
       this.$emit('change', items);
     },
+
     onOptionRemove(option) {
       const items = [...this.value];
       const { selectedItems } = this;
 
-      let valueIndex = items.findIndex((item) => {
-        if (this.reduceValueProperty) {
-          return item && option
-          && (item
-              === getValueFromOption(this.reduceValueProperty, option));
-        }
-
-        return item === option;
-      });
+      let valueIndex = getIndexFromVModelForOption(items, option, this.reduceValueProperty);
 
       items.splice(valueIndex, 1);
 
       valueIndex = selectedItems.findIndex((item) => {
         if (this.reduceValueProperty) {
-          return (
-            item
-            && option
-            && getValueFromOption(this.reduceValueProperty, item)
-              === getValueFromOption(this.reduceValueProperty, option)
-          );
+          return item && option
+                  && getValueFromOption(this.reduceValueProperty, item) === getValueFromOption(this.reduceValueProperty, option);
         }
 
         return item === option;
       });
 
-      selectedItems.splice(valueIndex, 1);
+      const removedItems = selectedItems.splice(valueIndex, 1);
+
+      this.addToNewlyRemovedItems(removedItems);
+      this.removeFromNewlyAddedItems([option]);
 
       // Copy the array because Vue doesn't react on the array modification by lodash
       // https://vuejs.org/v2/guide/list.html#Array-Change-Detection
       this.selectedItems = [...selectedItems];
 
+      this.emitChangedItems();
+
       this.$emit('input', items);
       this.$emit('change', items);
     },
+
     onSelectAllOptions() {
       if (this.$refs.availableList.searchText === '') {
         this.selectedItems = [...this.options];
@@ -264,8 +309,21 @@ export default {
       const selectedValues = getValuesFromOptions(this.reduceValueProperty, this.selectedItems);
       this.$emit('input', selectedValues);
       this.$emit('change', selectedValues);
+
+      this.addToNewlyAddedItems(this.selectedItems);
+      this.addToNewlyRemovedItems([], true);
+
+      this.emitChangedItems();
     },
+
     onUnselectAllOptions() {
+      this.addToNewlyRemovedItems(this.selectedItems);
+      this.addToNewlyAddedItems([], true);
+
+      this.selectedItems = [];
+      this.emitChangedItems();
+      this.$emit('input', []);
+      this.$emit('change', []);
       if (this.$refs.selectedList.searchText === '') {
         this.selectedItems = [];
       } else {
@@ -276,6 +334,70 @@ export default {
       const selectedValues = getValuesFromOptions(this.reduceValueProperty, this.selectedItems);
       this.$emit('input', selectedValues);
       this.$emit('change', selectedValues);
+    },
+
+    addToNewlyAddedItems(options, reset = false) {
+      if (reset) {
+        this.newlyAddedItems = [];
+      }
+
+      options.forEach((option) => {
+        const optionIndex = getIndexFromVModelForOption(this.originalValueCopy, option, this.reduceValueProperty);
+
+        if (optionIndex === -1) {
+          this.newlyAddedItems.push(option);
+        }
+      });
+    },
+
+    addToNewlyRemovedItems(options, reset = false) {
+      if (reset) {
+        this.newlyRemovedItems = [];
+      }
+
+      options.forEach((option) => {
+        const optionIndex = getIndexFromVModelForOption(this.originalValueCopy, option, this.reduceValueProperty);
+
+        if (optionIndex > -1) {
+          this.newlyRemovedItems.push(option);
+        }
+      });
+    },
+
+    removeFromNewlyRemovedItems(options = []) {
+      options.forEach((option) => {
+        const optionIndex = this.newlyRemovedItems.findIndex((o) => o === option);
+
+        if (optionIndex > -1) {
+          this.newlyRemovedItems.splice(optionIndex, 1);
+        }
+      });
+    },
+
+    removeFromNewlyAddedItems(options = []) {
+      options.forEach((option) => {
+        const optionIndex = this.newlyAddedItems.findIndex((o) => o === option);
+
+        if (optionIndex > -1) {
+          this.newlyAddedItems.splice(optionIndex, 1);
+        }
+      });
+    },
+
+    emitChangedItems() {
+      this.$emit('diff-changed', {
+        newSelected: this.newlyAddedItems.map((i) => this.reduceValueProperty(i)),
+        newUnselected: this.newlyRemovedItems.map((i) => this.reduceValueProperty(i)),
+      });
+    },
+
+    resetOriginalCopy() {
+      setTimeout(() => {
+        this.originalValueCopy = [...this.value];
+        this.newlyAddedItems = [];
+        this.newlyRemovedItems = [];
+        this.emitChangedItems();
+      }, 0);
     },
   },
 };

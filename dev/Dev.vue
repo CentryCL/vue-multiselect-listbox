@@ -1,11 +1,12 @@
 <template>
   <div id="app">
-    <!-- <sandbox hide-help v-slot="config"> -->
-    <MultiSelect v-model="value" :options="options" :show-select-all-buttons="showSelectAll"
+    <MultiSelect v-show="showWidget" v-model="value" :options="options" :show-select-all-buttons="showSelectAll"
       search-input-class="custom-input-class"
       :reduce-display-property="option => option.name"
-      :reduce-value-property="option => option.id" />
-    <!-- </sandbox> -->
+      :reduce-value-property="option => option.id"
+      ref="multi"
+      highlight-diff
+      @diff-changed="handleChange" />
   </div>
 </template>
 
@@ -16,12 +17,29 @@ export default {
   components: {
     MultiSelect,
   },
+
+  created() {
+    setTimeout(() => {
+      this.value = ['ch', 'wi'];
+
+      this.$refs.multi.resetOriginalCopy();
+    }, 1000);
+  },
+
   data() {
     return {
       value: [],
+      stringOptions: ['Chicago', 'Wisconsin', 'Houston'],
       options: [{ name: 'Chicago', id: 'ch' }, { name: 'Wisconsin', id: 'wi' }, { name: 'Houston', id: 'ho' }],
       showSelectAll: true,
+      showWidget: true,
     };
+  },
+
+  methods: {
+    handleChange(changes) {
+      console.log('Changes', changes);
+    },
   },
 };
 </script>
